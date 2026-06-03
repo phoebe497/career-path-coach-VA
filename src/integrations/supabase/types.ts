@@ -14,7 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      analysis_results: {
+        Row: {
+          created_at: string
+          cv_suggestions: Json
+          fit_score: number
+          id: string
+          job_title: string | null
+          learning_roadmap: Json
+          matched_skills: Json
+          missing_skills: Json
+          recommendation: string
+          user_id: string | null
+          weak_evidence: Json
+        }
+        Insert: {
+          created_at?: string
+          cv_suggestions?: Json
+          fit_score: number
+          id?: string
+          job_title?: string | null
+          learning_roadmap?: Json
+          matched_skills?: Json
+          missing_skills?: Json
+          recommendation: string
+          user_id?: string | null
+          weak_evidence?: Json
+        }
+        Update: {
+          created_at?: string
+          cv_suggestions?: Json
+          fit_score?: number
+          id?: string
+          job_title?: string | null
+          learning_roadmap?: Json
+          matched_skills?: Json
+          missing_skills?: Json
+          recommendation?: string
+          user_id?: string | null
+          weak_evidence?: Json
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
