@@ -7,10 +7,13 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, Link2, Loader2, Sparkles, Upload } from "lucide-react";
 import { extractPdfText } from "@/lib/pdf-parse";
+import type { Locale, LocaleCopy } from "@/lib/i18n";
 import { toast } from "sonner";
 
 type Props = {
   isAnalyzing: boolean;
+  locale: Locale;
+  copy: LocaleCopy;
   onAnalyze: (input: {
     cvText: string;
     jobDescription?: string;
@@ -18,7 +21,7 @@ type Props = {
   }) => void;
 };
 
-export function InputPanel({ isAnalyzing, onAnalyze }: Props) {
+export function InputPanel({ isAnalyzing, locale, copy, onAnalyze }: Props) {
   const [cvText, setCvText] = useState("");
   const [fileName, setFileName] = useState<string | null>(null);
   const [parsing, setParsing] = useState(false);
@@ -29,7 +32,7 @@ export function InputPanel({ isAnalyzing, onAnalyze }: Props) {
 
   const handleFile = async (file: File) => {
     if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
-      toast.error("Please upload a PDF file");
+      toast.error(copy.input.uploadPdf);
       return;
     }
     setParsing(true);
@@ -37,19 +40,15 @@ export function InputPanel({ isAnalyzing, onAnalyze }: Props) {
     try {
       const text = await extractPdfText(file);
       if (!text || text.length < 50) {
-        toast.error(
-          "Unable to extract CV content with high confidence. Please upload a clearer PDF or paste CV text manually.",
-        );
+        toast.error(copy.input.extractionFailed);
         setFileName(null);
       } else {
         setCvText(text);
-        toast.success(`Extracted ${text.length.toLocaleString()} characters`);
+        toast.success(copy.input.extracted(text.length));
       }
     } catch (e) {
       console.error(e);
-      toast.error(
-        "Unable to extract CV content with high confidence. Please upload a clearer PDF or paste CV text manually.",
-      );
+      toast.error(copy.input.extractionFailed);
       setFileName(null);
     } finally {
       setParsing(false);
@@ -58,15 +57,15 @@ export function InputPanel({ isAnalyzing, onAnalyze }: Props) {
 
   const handleAnalyze = () => {
     if (cvText.trim().length < 50) {
-      toast.error("CV text is too short — please upload a PDF or paste your CV.");
+      toast.error(copy.input.cvTooShort);
       return;
     }
     if (jdMode === "paste" && jdText.trim().length < 20) {
-      toast.error("Please paste a more detailed job description.");
+      toast.error(copy.input.pasteMoreJd);
       return;
     }
     if (jdMode === "url" && !jdUrl.trim()) {
-      toast.error("Please paste a job posting URL.");
+      toast.error(copy.input.pasteUrl);
       return;
     }
     onAnalyze({
@@ -77,16 +76,12 @@ export function InputPanel({ isAnalyzing, onAnalyze }: Props) {
   };
 
   return (
-    <Card
-      className="border-border/60 bg-card p-6"
-      style={{ boxShadow: "var(--shadow-card)" }}
-    >
+    <Card className="border-border/60 bg-card p-6" style={{ boxShadow: "var(--shadow-card)" }}>
       <div className="space-y-6">
-        {/* CV Upload */}
         <section>
           <div className="mb-2 flex items-center gap-2">
             <FileText className="h-4 w-4 text-primary" />
-            <h2 className="text-sm font-semibold text-foreground">Your CV</h2>
+            <h2 className="text-sm font-semibold text-foreground">{copy.input.yourCv}</h2>
           </div>
 
           <button
@@ -97,20 +92,14 @@ export function InputPanel({ isAnalyzing, onAnalyze }: Props) {
           >
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                {parsing ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Upload className="h-4 w-4" />
-                )}
+                {parsing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
               </div>
               <div>
                 <p className="text-sm font-medium text-foreground">
-                  {fileName ?? "Upload CV (PDF)"}
+                  {fileName ?? copy.input.uploadCv}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {parsing
-                    ? "Extracting text…"
-                    : "Drag-free upload · text extracted in your browser"}
+                  {parsing ? copy.input.extracting : copy.input.dragDrop}
                 </p>
               </div>
             </div>
@@ -129,45 +118,44 @@ export function InputPanel({ isAnalyzing, onAnalyze }: Props) {
 
           <div className="mt-3">
             <Label htmlFor="cv-text" className="text-xs text-muted-foreground">
-              Or paste CV text manually
+              {copy.input.pasteManually}
             </Label>
             <Textarea
               id="cv-text"
               value={cvText}
               onChange={(e) => setCvText(e.target.value)}
-              placeholder="Paste your CV content here…"
+              placeholder={copy.input.cvPlaceholder}
               className="mt-1 min-h-[140px] resize-y"
               disabled={isAnalyzing}
             />
             {cvText && (
               <p className="mt-1 text-right text-xs text-muted-foreground">
-                {cvText.length.toLocaleString()} characters
+                {cvText.length.toLocaleString()} {locale === "en" ? "characters" : "ký tự"}
               </p>
             )}
           </div>
         </section>
 
-        {/* Job Description */}
         <section>
           <div className="mb-2 flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
-            <h2 className="text-sm font-semibold text-foreground">Target Job</h2>
+            <h2 className="text-sm font-semibold text-foreground">{copy.input.targetJob}</h2>
           </div>
 
           <Tabs value={jdMode} onValueChange={(v) => setJdMode(v as "paste" | "url")}>
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="paste">
-                <FileText className="mr-2 h-3.5 w-3.5" /> Paste JD
+                <FileText className="mr-2 h-3.5 w-3.5" /> {copy.input.pasteJd}
               </TabsTrigger>
               <TabsTrigger value="url">
-                <Link2 className="mr-2 h-3.5 w-3.5" /> From URL
+                <Link2 className="mr-2 h-3.5 w-3.5" /> {copy.input.fromUrl}
               </TabsTrigger>
             </TabsList>
             <TabsContent value="paste" className="mt-3">
               <Textarea
                 value={jdText}
                 onChange={(e) => setJdText(e.target.value)}
-                placeholder="Paste the full job description…"
+                placeholder={copy.input.jdPlaceholder}
                 className="min-h-[160px] resize-y"
                 disabled={isAnalyzing}
               />
@@ -177,12 +165,10 @@ export function InputPanel({ isAnalyzing, onAnalyze }: Props) {
                 type="url"
                 value={jdUrl}
                 onChange={(e) => setJdUrl(e.target.value)}
-                placeholder="https://company.com/jobs/123"
+                placeholder={copy.input.urlPlaceholder}
                 disabled={isAnalyzing}
               />
-              <p className="text-xs text-muted-foreground">
-                We&apos;ll fetch and clean the posting automatically.
-              </p>
+              <p className="text-xs text-muted-foreground">{copy.input.urlHint}</p>
             </TabsContent>
           </Tabs>
         </section>
@@ -196,11 +182,11 @@ export function InputPanel({ isAnalyzing, onAnalyze }: Props) {
         >
           {isAnalyzing ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Analyzing…
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {copy.input.analyzing}
             </>
           ) : (
             <>
-              <Sparkles className="mr-2 h-4 w-4" /> Analyze fit
+              <Sparkles className="mr-2 h-4 w-4" /> {copy.input.analyze}
             </>
           )}
         </Button>
